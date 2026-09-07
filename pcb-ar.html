@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>نمای برد PCB</title>
+<style>
+  :root{
+    --accent: #FFB020;
+    --text: #ECE9DC;
+  }
+  html, body{
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background: #000;
+    overflow: hidden;
+    font-family: -apple-system, 'Vazirmatn', sans-serif;
+  }
+  #container{
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+  }
+  #container video{
+    object-fit: cover;
+  }
+  #hint{
+    position: fixed;
+    left: 50%;
+    bottom: 152px;
+    transform: translateX(-50%);
+    z-index: 10;
+    background: rgba(20,21,15,0.72);
+    color: var(--text);
+    padding: 10px 18px;
+    border-radius: 999px;
+    font-size: 13px;
+    border: 1px solid rgba(255,255,255,0.12);
+    transition: opacity 0.4s ease;
+    text-align: center;
+    white-space: nowrap;
+  }
+  #hint .dot{
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    margin-inline-start: 6px;
+    box-shadow: 0 0 6px var(--accent);
+  }
+  #err{
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    background: #14150F;
+    color: #ECE9DC;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 24px;
+    font-size: 14px;
+    line-height: 2;
+  }
+  #zoomControls{
+    position: fixed;
+    right: 16px;
+    bottom: 154px;
+    z-index: 15;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  #zoomControls button{
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.18);
+    background: rgba(20,21,15,0.72);
+    color: #ECE9DC;
+    font-size: 22px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #zoomControls button:active{
+    background: rgba(255,176,32,0.28);
+  }
+  #boardControls{
+    position: fixed;
+    left: 50%;
+    bottom: 78px;
+    transform: translateX(-50%);
+    z-index: 15;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    direction: ltr;
+    padding: 7px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.18);
+    background: rgba(20,21,15,0.78);
+    backdrop-filter: blur(8px);
+  }
+  #boardControls button{
+    width: 44px;
+    height: 40px;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.10);
+    color: #ECE9DC;
+    font-size: 22px;
+    line-height: 1;
+  }
+  #boardControls button:active{
+    background: rgba(255,176,32,0.28);
+  }
+  #boardControls button:disabled{
+    opacity: 0.35;
+  }
+  #boardLabel{
+    min-width: 64px;
+    color: #ECE9DC;
+    font-size: 12px;
+    text-align: center;
+    direction: rtl;
+  }
+  #boardTitle{
+    position: fixed;
+    top: calc(env(safe-area-inset-top, 0px) + 98px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 15;
+    min-width: 112px;
+    padding: 7px 15px;
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 999px;
+    background: rgba(20,21,15,0.62);
+    backdrop-filter: blur(6px);
+    color: #FFFFFF;
+    font-size: 15px;
+    font-weight: 700;
+    text-align: center;
+    direction: ltr;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.75);
+    pointer-events: none;
+  }
+  #brandBar{
+    position: fixed;
+    top: calc(env(safe-area-inset-top, 0px) + 10px);
+    left: 14px;
+    z-index: 15;
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+    direction: ltr;
+    pointer-events: none;
+    user-select: none;
+  }
+  .brandItem{
+    width: 52px;
+    text-align: center;
+  }
+  .brandName{
+    margin-bottom: 3px;
+    color: #FFFFFF;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.1;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.9);
+  }
+  .brandLogo{
+    display: block;
+    width: 46px;
+    height: 43px;
+    margin: 0 auto;
+    object-fit: contain;
+  }
+  .brandItem.telesk .brandLogo{
+    filter: drop-shadow(0 0 1px rgba(255,255,255,0.95)) drop-shadow(0 1px 2px rgba(255,255,255,0.55));
+  }
+  .brandItem.jvan .brandLogo{
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.8));
+  }
+  #nameTag{
+    position: fixed;
+    left: 50%;
+    bottom: 26px;
+    transform: translateX(-50%);
+    z-index: 12;
+    text-align: center;
+    pointer-events: none;
+  }
+  #nameTagShort{
+    font-size: 15px;
+    font-weight: 600;
+    color: #ECE9DC;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+  }
+  #nameTagFull{
+    font-size: 11px;
+    color: #B8B6A6;
+    margin-top: 2px;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+  }
+</style>
+</head>
+<body>
+
+<div id="container"></div>
+<div id="hint"><span class="dot"></span>دوربین رو روی نماد بگیر — یک انگشت بچرخون</div>
+<div id="err">دسترسی به دوربین لازمه.<br>از تنظیمات مرورگر اجازه بده و صفحه رو دوباره باز کن.</div>
+
+<div id="brandBar" aria-label="نشان‌های مالکیت پروژه">
+  <div class="brandItem telesk">
+    <div class="brandName">Telesk</div>
+    <img class="brandLogo" src="./telesk-logo.png" alt="Telesk">
+  </div>
+  <div class="brandItem jvan">
+    <div class="brandName">J.Van</div>
+    <img class="brandLogo" src="./jvan-logo.png" alt="J.Van">
+  </div>
+</div>
+
+<div id="boardTitle">در حال بارگذاری…</div>
+
+<div id="zoomControls">
+  <button id="zoomIn" aria-label="بزرگ‌نمایی">+</button>
+  <button id="zoomOut" aria-label="کوچک‌نمایی">−</button>
+</div>
+
+<div id="boardControls" aria-label="انتخاب برد">
+  <button id="prevBoard" aria-label="برد قبلی" disabled>‹</button>
+  <span id="boardLabel">در حال بارگذاری…</span>
+  <button id="nextBoard" aria-label="برد بعدی" disabled>›</button>
+</div>
+
+<div id="nameTag">
+  <div id="nameTagShort">Hummin Robotic Co.</div>
+  <div id="nameTagFull">M.Javad Vahediyan</div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import { MindARThree } from "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js";
+import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+
+const BOARDS = [
+  { name: "Telesk iot", src: "./board-1.glb" },
+  { name: "TD4", src: "./board-2-4dL293.glb" },
+  { name: "TD2", src: "./board-3-L293D.glb" },
+];
+
+const BASE_SCALE = 3.0;
+const BASE_TILT = 0;
+const hint = document.getElementById("hint");
+const errBox = document.getElementById("err");
+const boardLabel = document.getElementById("boardLabel");
+const boardTitle = document.getElementById("boardTitle");
+const prevButton = document.getElementById("prevBoard");
+const nextButton = document.getElementById("nextBoard");
+
+function showFatal(message) {
+  errBox.style.display = "flex";
+  errBox.innerHTML = "خطا:<br>" + String(message).slice(0, 240);
+}
+window.addEventListener("error", (event) => showFatal(event.message));
+window.addEventListener("unhandledrejection", (event) => showFatal(event.reason));
+
+const mindarThree = new MindARThree({
+  container: document.querySelector("#container"),
+  imageTargetSrc: "./pcb-targets.mind",
+});
+const { renderer, scene, camera } = mindarThree;
+
+// Neutral colour pipeline: the GLB base colours remain untouched.
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.NoToneMapping;
+renderer.toneMappingExposure = 1.0;
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.70));
+scene.add(new THREE.HemisphereLight(0xffffff, 0x777777, 0.35));
+
+const keyLight = new THREE.DirectionalLight(0xffffff, 0.65);
+keyLight.position.set(1.2, 2.0, 2.4);
+scene.add(keyLight);
+
+const fillLight = new THREE.DirectionalLight(0xffffff, 0.22);
+fillLight.position.set(-1.4, 0.7, 1.0);
+scene.add(fillLight);
+
+const anchor = mindarThree.addAnchor(0);
+const loader = new GLTFLoader();
+const models = [];
+let activeIndex = 0;
+let model = null;
+let currentScale = BASE_SCALE;
+let autoRotate = true;
+
+function prepareModel(gltf) {
+  const content = gltf.scene;
+  content.updateMatrixWorld(true);
+  const bounds = new THREE.Box3().setFromObject(content);
+  const center = bounds.getCenter(new THREE.Vector3());
+
+  // Centre every export over the marker and put its lowest point on the card.
+  content.position.set(-center.x, -center.y, -bounds.min.z);
+
+  const pivot = new THREE.Group();
+  pivot.add(content);
+  pivot.scale.setScalar(currentScale);
+  pivot.rotation.x = BASE_TILT;
+  pivot.visible = false;
+  anchor.group.add(pivot);
+  return pivot;
+}
+
+async function loadBoards() {
+  const loaded = await Promise.all(BOARDS.map((board) => loader.loadAsync(board.src)));
+  loaded.forEach((gltf) => models.push(prepareModel(gltf)));
+  prevButton.disabled = false;
+  nextButton.disabled = false;
+  showBoard(0);
+}
+
+function showBoard(index) {
+  if (!models.length) return;
+  models.forEach((item) => { item.visible = false; });
+  activeIndex = (index + models.length) % models.length;
+  model = models[activeIndex];
+  model.visible = true;
+  model.scale.setScalar(currentScale);
+  boardTitle.textContent = BOARDS[activeIndex].name;
+  boardLabel.textContent = `${activeIndex + 1} / ${models.length}`;
+}
+
+prevButton.addEventListener("click", () => showBoard(activeIndex - 1));
+nextButton.addEventListener("click", () => showBoard(activeIndex + 1));
+
+anchor.onTargetFound = () => { hint.style.opacity = "0"; };
+anchor.onTargetLost = () => { hint.style.opacity = "1"; };
+
+let lastSingle = null;
+const stage = document.querySelector("#container");
+stage.style.touchAction = "none";
+
+stage.addEventListener("pointerdown", (event) => {
+  autoRotate = false;
+  try { stage.setPointerCapture(event.pointerId); } catch (error) {}
+  lastSingle = { x: event.clientX, y: event.clientY };
+});
+
+stage.addEventListener("pointermove", (event) => {
+  if (!lastSingle || !model) return;
+  const dx = event.clientX - lastSingle.x;
+  const dy = event.clientY - lastSingle.y;
+  model.rotation.y += dx * 0.012;
+  model.rotation.x = Math.max(
+    BASE_TILT - 1.3,
+    Math.min(BASE_TILT + 1.3, model.rotation.x + dy * 0.012)
+  );
+  lastSingle = { x: event.clientX, y: event.clientY };
+});
+
+function releasePointer() { lastSingle = null; }
+stage.addEventListener("pointerup", releasePointer);
+stage.addEventListener("pointercancel", releasePointer);
+
+const ZOOM_STEP = 1.18;
+const ZOOM_MIN = BASE_SCALE * 0.25;
+const ZOOM_MAX = BASE_SCALE * 12;
+
+function applyZoom(factor) {
+  if (!model) return;
+  autoRotate = false;
+  currentScale = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, currentScale * factor));
+  models.forEach((item) => item.scale.setScalar(currentScale));
+}
+
+document.getElementById("zoomIn").addEventListener("click", () => applyZoom(ZOOM_STEP));
+document.getElementById("zoomOut").addEventListener("click", () => applyZoom(1 / ZOOM_STEP));
+
+async function start() {
+  try {
+    await loadBoards();
+    await mindarThree.start();
+    renderer.setAnimationLoop(() => {
+      if (model && autoRotate) model.rotation.y += 0.01;
+      renderer.render(scene, camera);
+    });
+  } catch (error) {
+    showFatal(error.message || error);
+    console.error(error);
+  }
+}
+start();
+</script>
+
+</body>
+</html>
